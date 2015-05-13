@@ -10,9 +10,9 @@
 	<name>Scheduler</name>
 	<url>http://maven.apache.org</url>
 	<modules>
+		<module>common_module</module>
 		<module>client</module>
 		<module>server</module>
-		<module>common_module</module>
 	</modules>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

@@ -20,7 +20,6 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <addClasspath>true</addClasspath>
                         </manifest>
                     </archive>
                 </configuration>

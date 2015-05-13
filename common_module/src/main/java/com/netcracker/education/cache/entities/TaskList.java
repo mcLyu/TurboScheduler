@@ -5,6 +5,7 @@ import com.netcracker.education.cache.interfaces.Observable;
 import com.netcracker.education.cache.interfaces.Observer;
 import com.netcracker.education.cache.interfaces.Task;
 
+import javax.xml.bind.annotation.*;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.LinkedList;
@@ -13,10 +14,16 @@ import java.util.List;
 /**
  * Created by 1 on 04.11.2014.
  */
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.FIELD)
+public class TaskList extends ClientCommandParameter implements Serializable, Observable {
 
-public class TaskList implements Serializable,Observable {
-
+    @XmlElementWrapper
+    @XmlAnyElement
     private List<Task> activeTasks;
+
+    @XmlElementWrapper
+    @XmlAnyElement
     private List<Task> performedTasks;
     private transient List<Observer> observers;
 
@@ -33,6 +40,14 @@ public class TaskList implements Serializable,Observable {
         for (Task task : tasks) {
             addTask(task);
         }
+    }
+
+    public void setPerformedTasks(List<Task> performedTasks) {
+        this.performedTasks = performedTasks;
+    }
+
+    public void setActiveTasks(List<Task> activeTasks) {
+        this.activeTasks = activeTasks;
     }
 
     public void initObservers() {
@@ -86,7 +101,7 @@ public class TaskList implements Serializable,Observable {
         notifyObservers();
     }
 
-    public void deleteTask(Task task) {
+    public void removeTask(Task task) {
         int index = 0;
         for (Task t : activeTasks) {
             if (t.equals(task)) {
@@ -127,14 +142,21 @@ public class TaskList implements Serializable,Observable {
     }
 
     public void addAll(List<Task> taskList) {
-        Date currentDate = new Date();
         for (int i = 0; i < taskList.size(); i++) {
             Task task = taskList.get(i);
-            Long time = currentDate.getTime();
-            int myComputerError = 0;
-            if (task.getAlertTime().getTime() > time + myComputerError) {
-                activeTasks.add(task);
-            } else performedTasks.add(task);
+            this.addTask(task);
+        }
+        notifyObservers();
+    }
+
+    public void addAll(TaskList taskList) {
+        for (int i = 0; i < taskList.getActiveTasks().size(); i++) {
+            Task task = taskList.getActiveTasks().get(i);
+            this.addTask(task);
+        }
+        for (int i = 0; i < taskList.getPerformedTasks().size(); i++) {
+            Task task = taskList.getPerformedTasks().get(i);
+            this.addTask(task);
         }
         notifyObservers();
     }
@@ -143,6 +165,7 @@ public class TaskList implements Serializable,Observable {
         if (activeTasks.isEmpty()) return null;
         return activeTasks.get(0);
     }
+
 
     public Object[] asList() {
         int tasksSize = activeTasks.size() + performedTasks.size();
@@ -200,5 +223,19 @@ public class TaskList implements Serializable,Observable {
         for (Observer observer : observers) {
             observer.update(this);
         }
+    }
+
+    public void removeUserTasks(String owner) {
+        for (int i = 0; i < getActiveTasks().size(); i++) {
+            Task currentTask = getActiveTasks().get(i);
+            if ((currentTask != null) &&currentTask.getOwner().equals(owner))
+                removeTask(currentTask);
+        }
+        for (int i = 0; i < getPerformedTasks().size(); i++) {
+            Task currentTask = getPerformedTasks().get(i);
+            if ((currentTask != null) && currentTask.getOwner().equals(owner))
+                removeTask(currentTask);
+        }
+        notifyObservers();
     }
 }

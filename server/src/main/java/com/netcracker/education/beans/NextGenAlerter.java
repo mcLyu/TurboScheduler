@@ -1,31 +1,44 @@
 package com.netcracker.education.beans;
 
+import com.netcracker.education.ServerManager;
 import com.netcracker.education.cache.interfaces.Task;
 
 import java.util.Date;
+import java.util.TimeZone;
 
 /**
  * Created by Mill on 06.12.2014.
  */
 public class NextGenAlerter implements Runnable {
-    Task task;
-    TaskService taskService;
+    private Task task;
+    boolean interrupted;
     final static int WAIT_MILLISECONDS_INTERVAL = 5000;
 
-    public NextGenAlerter(Task task, TaskService taskService) {
+    public NextGenAlerter(Task task) {
+        TimeZone.setDefault(TimeZone.getTimeZone("Europe/Samara"));
         this.task = task;
-        this.taskService = taskService;
+        interrupted = false;
+    }
+
+    public void interrupt() {
+        interrupted = true;
     }
 
     /**
      * Waits for the tasks alert time, and signalized about them.
+     *
      * @throws InterruptedException
      */
-    private void monitorTask() throws InterruptedException {
-        while (!soonAlert()) {
-            Thread.sleep(WAIT_MILLISECONDS_INTERVAL);
+    private void monitorTask() {
+        try {
+            while (!soonAlert() && !interrupted) {
+                Thread.sleep(WAIT_MILLISECONDS_INTERVAL);
+                System.out.println("Отслеживается: " + task.getName());
+            }
+            if (!interrupted)
+                new ServerManager().sendToClientAlertedTask(task);
+        } catch (InterruptedException e) {
         }
-        taskService.alert(task);
     }
 
     /**
@@ -38,10 +51,6 @@ public class NextGenAlerter implements Runnable {
 
     @Override
     public void run() {
-        try {
-            monitorTask();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        monitorTask();
     }
 }

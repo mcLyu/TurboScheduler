@@ -1,118 +1,68 @@
 package com.netcracker.education;
 
 import com.netcracker.education.beans.TaskService;
-import com.netcracker.education.cache.entities.AuthenticationData;
+import com.netcracker.education.cache.interfaces.Request;
+import com.netcracker.education.cache.beans.xml.jaxb.JAXBParser;
 import com.netcracker.education.cache.entities.Command;
-import com.netcracker.education.cache.entities.TaskList;
-import com.netcracker.education.cache.interfaces.Task;
+import com.netcracker.education.cache.interfaces.XMLParser;
+import com.netcracker.education.entities.commands.*;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
-
 /**
- * Created by Mill on 19.03.2015.
+ * Created by Mill on 10.04.2015.
  */
-public class Server extends Thread {
+public class Server extends Thread{
+    private static Logger log = Logger.getLogger(Server.class.getName());
     Socket fromclient;
-    int num;
-    TaskList taskList;
-    com.netcracker.education.beans.TaskService taskService;
-    static Map<String, String> sessions = new HashMap();
+    TaskService taskService;
+    static Map<String, String> sessions = new HashMap<>();
+    static Map<Command, Class<? extends com.netcracker.education.interfaces.Command>> commandsMapping = new EnumMap<>(Command.class);
 
-    public static void main(String args[]) {
-        try {
-            int i = 0; // счётчик подключений
-            ServerSocket server = new ServerSocket(1111);
-            System.out.println("Welcome to server side");
-            while (true) {
-                new Server(i, server.accept());
-                i++;
-            }
-        } catch (Exception e) {
-            System.out.println("init error: " + e);
-        }
-    }
-
-    public Server(int num, Socket fromclient) {
-        taskService = new TaskService();
-        this.num = num;
+    public Server(Socket fromclient, TaskService taskService) {
+        initCommands();
+        this.taskService = taskService;
         this.fromclient = fromclient;
-        System.out.println("Client connected");
-        setPriority(NORM_PRIORITY);
+        log.debug("Client connected.");
         start();
     }
 
     public void run() {
-        try {
-            ObjectOutputStream out = new ObjectOutputStream(fromclient.getOutputStream());
-            ObjectInputStream in = new ObjectInputStream(fromclient.getInputStream());
-            String command;
-            command = in.readObject().toString();
-            if (Command.valueOf(command) != null) {
-                System.out.println("Command : " + command);
-                executeCommand(Command.valueOf(command), in, out);
+        try (ObjectOutputStream out = new ObjectOutputStream(fromclient.getOutputStream());
+             ObjectInputStream in = new ObjectInputStream(fromclient.getInputStream());) {
+
+            String xmlRequest = in.readObject().toString();
+            log.debug("Request from client:\n" + xmlRequest);
+            XMLParser xmlParser = new JAXBParser();
+            Request request = xmlParser.parseRequest(xmlRequest);
+            Command currentCommand;
+            if ((currentCommand = request.getCommand()) != null) {
+                Class<? extends com.netcracker.education.interfaces.Command> commandClass = commandsMapping.get(currentCommand);
+                com.netcracker.education.interfaces.Command command = commandClass.newInstance();
+                sessions = command.execute(in, out, taskService, sessions,request);
             }
 
-            out.close();
-            in.close();
-        } catch (Exception e) {
-            System.out.println("init error: " + e);
-        } // вывод исключений
+        } catch (ClassNotFoundException|IOException e) {
+            log.error("Error reading command",e);
+        } catch (InstantiationException|IllegalAccessException e) {
+            log.error("This command can not be processed", e);
+        }
     }
 
-    private void executeCommand(Command command, ObjectInputStream in, ObjectOutputStream out) throws IOException, ClassNotFoundException {
-        // TODO:make interface
-        switch (command) {
-            case AUTHORIZATION: {
-                AuthenticationData authData = (AuthenticationData) in.readObject();
-                String session = taskService.authorizeUser(authData);
-                sessions.put(session, authData.getLogin());
-                out.writeObject(session);
-            }
-            break;
-            case REGISTRATION: {
-                AuthenticationData authData = (AuthenticationData) in.readObject();
-                taskService.registerUser(authData);
-            }
-            break;
-            case LOAD: {
-                String session = (String) in.readObject();
-                String login = sessions.get(session);
-                TaskList taskList;
-                if (login != null) {
-                    taskList = taskService.getTaskList(login);
-                    out.writeObject(taskList);
-                }
-            }
-            break;
-            case ADD: {
-                String session = (String) in.readObject();
-                String login = sessions.get(session);
-                Task task = (Task) in.readObject();
-                task.setUserLogin(login);
-                if (login != null) {
-                    taskService.addTask(task);
-                    taskList = taskService.getTaskList(login);
-                    out.writeObject(taskList);
-                }
-            }
-            break;
-            case REMOVE:{
-                String session = (String) in.readObject();
-                String login = sessions.get(session);
-                int taskNumber = (Integer) in.readObject();
-                taskService.getTaskList(login);
-                taskService.removeTask(taskNumber);
-                taskList = taskService.getTaskList(login);
-                out.writeObject(taskList);
-            }
-            break;
-        }
+
+    private static void initCommands() {
+        commandsMapping.put(Command.AUTHORIZATION, AuthCommand.class);
+        commandsMapping.put(Command.REGISTRATION, RegistrationCommand.class);
+        commandsMapping.put(Command.ADD, AddCommand.class);
+        commandsMapping.put(Command.LOAD, LoadCommand.class);
+        commandsMapping.put(Command.REMOVE, RemoveCommand.class);
+        commandsMapping.put(Command.SHUTDOWN, ShutDownCommand.class);
     }
 }

@@ -25,12 +25,35 @@
         <processorPath useClasspath="true" />
         <module name="Client" />
         <module name="CommonModule" />
-        <module name="Scheduler" />
         <module name="Server" />
+      </profile>
+      <profile default="false" name="Annotation profile for server" enabled="true">
+        <sourceOutputDir name="target\generated-sources\annotations" />
+        <sourceTestOutputDir name="target\generated-test-sources\test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+        <module name="server" />
+      </profile>
+      <profile default="false" name="Annotation profile for client" enabled="true">
+        <sourceOutputDir name="target\generated-sources\annotations" />
+        <sourceTestOutputDir name="target\generated-test-sources\test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+        <module name="client" />
+      </profile>
+      <profile default="false" name="Annotation profile for common_module" enabled="true">
+        <sourceOutputDir name="target\generated-sources\annotations" />
+        <sourceTestOutputDir name="target\generated-test-sources\test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+        <module name="common_module" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="client" target="1.7" />
+      <module name="common_module" target="1.7" />
       <module name="Scheduler" target="1.7" />
+      <module name="server" target="1.7" />
     </bytecodeTargetLevel>
   </component>
 </project>

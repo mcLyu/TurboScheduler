@@ -2,30 +2,30 @@ package com.netcracker.education.beans;
 
 import com.netcracker.education.cache.entities.AuthenticationData;
 import com.netcracker.education.cache.entities.TaskList;
+import com.netcracker.education.cache.interfaces.Observable;
 import com.netcracker.education.cache.interfaces.Observer;
 import com.netcracker.education.cache.interfaces.Task;
 
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by Lyu on 12.11.2014.
  */
-public class TaskService implements Observer {
-    private Queue<Task> alertQueue = new PriorityQueue<>();
+public class TaskService implements Observable {
     private TaskList taskList;
-
+    List<Observer> observers = new LinkedList<>();
     public TaskService() {
         taskList = new TaskList();
     }
 
     public TaskService(String login){
         taskList = DataBaseService.loadUserTasks(login);
+        notifyObservers();
     }
 
     public TaskService(TaskList taskList) {
         this.taskList = taskList;
-        taskList.registerObserver(this);
     }
 
     public void registerUser(AuthenticationData authData){
@@ -35,11 +35,13 @@ public class TaskService implements Observer {
     public void addTask(Task task) {
         DataBaseService.addTask(task);
         taskList.addTask(task);
+        notifyObservers();
     }
 
     public void removeTask(int taskNumber) {
         DataBaseService.removeTask(taskList.getTask(taskNumber));
         taskList.removeTask(taskNumber);
+        notifyObservers();
     }
 
     public String authorizeUser(AuthenticationData authData) {
@@ -48,7 +50,7 @@ public class TaskService implements Observer {
     }
 
     public void deleteTask(Task task) {
-        taskList.deleteTask(task);
+        taskList.removeTask(task);
     }
 
     public void setTask(int taskNumber, Task task) {
@@ -68,28 +70,26 @@ public class TaskService implements Observer {
         return taskList;
     }
 
+    public TaskList getTaskList(){
+        return taskList;
+    }
 
-    /**
-     * Shows task to the user, user response, extends task or transfers it to performed.
-     *
-     * @param alertTask, it needs to show the user
-     */
-    public void alert(Task alertTask) {
-        /*if (alertQueue.isEmpty()) {
-            AlerterForm alerterForm = new AlerterForm();
-            boolean done = alerterForm.waitResult(alertTask);
-            if (done) {
-                removeTask(0);
-                Task performedTask = new TaskImpl(alertTask.getName(), alertTask.getDescription(), new Date(alertTask.getAlertTime().getTime() - 1000));
-                taskList.addPerformedTask(performedTask);
-            } else
-                setTask(alertTask, new TaskImpl(alertTask.getName(), alertTask.getDescription(), new Date(alertTask.getAlertTime().getTime() + 30 * 60 * 1000)));
-        } else alertQueue.add(alertTask);*/
+
+    @Override
+    public void registerObserver(Observer o) {
+        observers.add(o);
     }
 
     @Override
-    public void update(Object obj) {
-        this.taskList = (TaskList) obj;
-        //view.updateTaskList();
+    public void removeObserver(Observer o) {
+        observers.remove(o);
+    }
+
+    @Override
+    public void notifyObservers() {
+        for (Observer observer : observers)
+        {
+            observer.update(taskList);
+        }
     }
 }

@@ -11,7 +11,7 @@ import java.security.SecureRandom;
  * Created by Mill on 25.03.2015.
  */
 public class SecurityService {
-    // TODO: make non-static methods
+
     public AuthenticationData createHashSaltPassword(AuthenticationData authData) {
         authData.setSalt(SecureRandom.getSeed(4).toString());
 
@@ -33,7 +33,6 @@ public class SecurityService {
         md.update(string.getBytes());
 
         byte byteData[] = md.digest();
-        // TODO: StringBuilder +
         StringBuilder hexString = new StringBuilder();
         int passwordComplication = 5;
         for (int i=0;i<passwordComplication;i++) {
@@ -49,9 +48,7 @@ public class SecurityService {
          String session = "";
          String hashPasswordFromClient= hashString(combinedPassword);
          if (hashPasswordFromClient.equals(dataBaseAuthData.getHashSaltPassword()))
-             // TODO: System.currentTime +
              session = hashString(String.valueOf(System.currentTimeMillis()));
-        System.out.println(session);
          return session;
     }
 }

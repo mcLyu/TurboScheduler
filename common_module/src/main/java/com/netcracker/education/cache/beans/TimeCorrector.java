@@ -1,6 +1,4 @@
-package com.netcracker.education;
-
-import com.netcracker.education.cache.entities.TaskList;
+package com.netcracker.education.cache.beans;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,24 +9,8 @@ import java.util.TimeZone;
  * Scheduler
  */
 //
-public class App {
-    public static void main(String[] args) {
-
-    }
-
-    public static void withTL(TaskList taskList) {
-        /*setCorrectTime();
-        TaskService service = new TaskService();
-        AlerterService alerterService = new AlerterService(service);
-        taskList.registerObserver(alerterService);
-       /* MainForm mainForm = new MainForm();
-        mainForm.setTaskService(service);
-        service.setView(mainForm);
-        mainForm.updateTaskList();
-        alerterService.start();*/
-    }
-
-    private static void setCorrectTime() {
+public class TimeCorrector {
+    public String getTimeZone(){
         String timezone = "";
         try {
             Process p = Runtime.getRuntime().exec("wmic.exe TimeZone get /value");
@@ -45,6 +27,11 @@ public class App {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return timezone;
+    }
+
+    private void setCorrectTime() {
+        String timezone = getTimeZone();
         if (timezone.contains("RTZ"))
         TimeZone.setDefault(TimeZone.getTimeZone("Europe/Samara"));
     }

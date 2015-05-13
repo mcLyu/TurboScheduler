@@ -4,14 +4,20 @@ import com.netcracker.education.cache.entities.AuthenticationData;
 import com.netcracker.education.cache.entities.TaskImpl;
 import com.netcracker.education.cache.entities.TaskList;
 import com.netcracker.education.cache.interfaces.Task;
+import org.apache.log4j.Logger;
 
 import java.sql.*;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 
 
 /**
  * Created by Mill on 19.03.2015.
  */
 public class DataBaseService {
+    private static Logger log = Logger.getLogger(DataBaseService.class.getName());
     public static Connection connection;
     public static ResultSet resultSet;
 
@@ -25,7 +31,7 @@ public class DataBaseService {
             resultSet = preparedStatement.executeQuery();
             user_id = resultSet.getInt("USER_ID");
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Error when searching user in database.",e);
         }
         return user_id;
     }
@@ -35,7 +41,7 @@ public class DataBaseService {
             Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection("jdbc:sqlite:tasks.s3db");
         } catch (SQLException | ClassNotFoundException e) {
-            e.printStackTrace();
+            log.error("Cannot establish database connection.",e);
         }
     }
 
@@ -44,7 +50,7 @@ public class DataBaseService {
             if (resultSet != null) resultSet.close();
             connection.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Cannot close database connection.", e);
         }
     }
 
@@ -62,13 +68,19 @@ public class DataBaseService {
             resultSet = preparedStatement.executeQuery();//prepared
 
             while (resultSet.next()) {
-                Task task = new TaskImpl(resultSet.getString("NAME"), resultSet.getString("DESCRIPTION"), resultSet.getDate("ALERT_DATE"));
+                String alertDate = resultSet.getString("ALERT_DATE");
+                java.util.Date dbDate = new java.util.Date(Long.parseLong(alertDate));
+
+                DateFormat myFormat = new SimpleDateFormat("dd MMM yyyy HH:mm:ss z");
+                myFormat.setTimeZone(TimeZone.getDefault());
+                String parsedFormat = myFormat.format(dbDate);
+                Task task = new TaskImpl(resultSet.getString("NAME"), resultSet.getString("DESCRIPTION"), myFormat.parse(parsedFormat));
                 result.addTask(task);
             }
 
             closeConnection();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException|ParseException e) {
+            log.error("Cannot load task list from database.", e);
         }
         return result;
     }
@@ -88,7 +100,7 @@ public class DataBaseService {
             SecurityService securityService = new SecurityService();
             session = securityService.checkUserExistence(authData,dataBaseAuthData);
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Cannot authorize user.", e);
         }
         closeConnection();
         return session;
@@ -109,7 +121,7 @@ public class DataBaseService {
             preparedStatement.executeUpdate();
         }
         catch (SQLException e){
-            e.printStackTrace();
+            log.error("Cannot add task to database.", e);
         }
         closeConnection();
     }
@@ -127,10 +139,8 @@ public class DataBaseService {
             preparedStatement.setString(2, authData.getHashSaltPassword());
             preparedStatement.setString(3, authData.getSalt());
             preparedStatement.executeUpdate();
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (NullPointerException|SQLException e) {
+            log.error("Cannot register user " + authData.getLogin(), e);
         }
 
         closeConnection();
@@ -148,7 +158,7 @@ public class DataBaseService {
             preparedStatement.executeUpdate();
         }
         catch (SQLException e){
-            e.printStackTrace();
+            log.error("Cannot remove task "+ task.getName(),e);
         }
 
         closeConnection();

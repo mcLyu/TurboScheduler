@@ -33,18 +33,11 @@ public class MainForm extends JFrame implements Observer {
         dateSpinner.setValue(new Date());
     }
 
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
     @Override
     public void update(Object obj) {
         taskList = (TaskList) obj;
         taskListView.setListData(taskList.getActiveTaskNames());
         performedListView.setListData(taskList.getPerformedTaskNames());
-    }
-    public void updateTaskList(TaskList taskList) {
-
     }
 
     private void addButtonActionPerformed(ActionEvent e) {
@@ -91,11 +84,7 @@ public class MainForm extends JFrame implements Observer {
     }
 
     private void thisWindowClosing(WindowEvent e) {
-        /*try {
-            //storage.saveData(taskService.getTaskList());
-        } catch (StorageException e1) {
-            e1.printStackTrace();
-        }*/
+        client.shutDownServer();
         System.exit(0);
     }
 

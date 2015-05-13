@@ -1,12 +1,12 @@
 package com.netcracker.education;
 
 
-import com.netcracker.education.cache.entities.AuthenticationData;
-import com.netcracker.education.cache.entities.Command;
-import com.netcracker.education.cache.entities.TaskList;
-import com.netcracker.education.cache.interfaces.Observable;
-import com.netcracker.education.cache.interfaces.Observer;
-import com.netcracker.education.cache.interfaces.Task;
+import com.netcracker.education.cache.beans.xml.jaxb.JAXBParser;
+import com.netcracker.education.cache.entities.*;
+import com.netcracker.education.cache.interfaces.*;
+import com.netcracker.education.cache.beans.request.XMLRequest;
+import com.netcracker.education.cache.beans.xml.jaxb.JAXBConverter;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -19,22 +19,26 @@ import java.util.List;
  * Created by Mill on 19.03.2015.
  */
 public class Client implements Observable {
-
+    private static Logger log = Logger.getLogger(Client.class.getName());
     private Socket fromserver;
     private ObjectInputStream in;
     private ObjectOutputStream out;
 
-    private transient List<Observer> observers = new LinkedList<Observer>();
+    private transient List<Observer> observers = new LinkedList<>();
     private TaskList updatedTaskList;
     private String session;
 
-    private void openConnection() {
+    public Client(){
+        new WaiterAlertedTask().start();
+    }
+
+    private void openConnection(int port) {
         try {
-            fromserver = new Socket("127.0.0.1", 1111);
+            fromserver = new Socket("127.0.0.1", port);
             in = new ObjectInputStream(fromserver.getInputStream());
             out = new ObjectOutputStream(fromserver.getOutputStream());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Unable to connect to server.",e);
         }
     }
 
@@ -44,16 +48,18 @@ public class Client implements Observable {
             in.close();
             fromserver.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Unable to close connection.", e);
         }
     }
 
     public String autorizeUser(AuthenticationData authData) throws IOException, ClassNotFoundException {
         try {
-            openConnection();
-            sendCommandToServer(Command.AUTHORIZATION);
-            out.writeObject(authData);
-            session = (String) in.readObject();
+            openConnection(1111);
+            Request<AuthenticationData> authenticationRequest = new XMLRequest<>(Command.AUTHORIZATION,"",authData);
+            sendRequest(authenticationRequest);
+            XMLParser xmlParser = new JAXBParser();
+            String response = (String)in.readObject();
+            session = String.valueOf(xmlParser.parseResponse(response).getObject());
         }
         finally {
             closeConnection();
@@ -63,17 +69,23 @@ public class Client implements Observable {
 
     public void registerUser(AuthenticationData authData) throws IOException, ClassNotFoundException {
         try {
-            openConnection();
-            sendCommandToServer(Command.REGISTRATION);
-            sendObjectToServer(authData);
+            openConnection(1111);
+            Request<AuthenticationData> authenticationRequest = new XMLRequest<>(Command.REGISTRATION,"",authData);
+            sendRequest(authenticationRequest);
         }
         finally {
             closeConnection();
         }
     }
 
-    private void sendObjectToServer(Object object) throws IOException {
-        out.writeObject(object);
+    private void sendRequest(String xmlRequest) throws IOException{
+        out.writeObject(xmlRequest);
+    }
+
+    private void sendRequest(Request request) throws IOException {
+        XMLConverter jaxbConverter = new JAXBConverter();
+        String xmlRequest = jaxbConverter.convertToXML(request);
+        sendRequest(xmlRequest);
     }
 
     private void sendCommandToServer(Command command) throws IOException {
@@ -85,31 +97,33 @@ public class Client implements Observable {
     }
 
     public TaskList loadTaskList(String session){
-        TaskList taskList = null;
         try {
-            openConnection();
-            sendCommandToServer(Command.LOAD);
-            sendObjectToServer(session);
-            updatedTaskList = (TaskList) in.readObject();
+            openConnection(1111);
+            Request request = new XMLRequest(Command.LOAD,session,null);
+            sendRequest(request);
+            XMLParser xmlParser = new JAXBParser();
+            String response = (String)in.readObject();
+            updatedTaskList = (TaskList) xmlParser.parseResponse(response).getObject();
             notifyObservers();
         } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
+            log.error("Unable to load task list.", e);
         } finally {
             closeConnection();
         }
-        if (taskList != null) return taskList;
-        else return null;
+        if (updatedTaskList != null) return updatedTaskList;
+        else return updatedTaskList;
     }
 
-    public void addTask(Task task) {
+    public void addTask(Task task){
         try {
-            openConnection();
-            sendCommandToServer(Command.ADD);
-            sendObjectToServer(session);
-            sendObjectToServer(task);
+            openConnection(1111);
+            Request<TaskImpl> request = new XMLRequest<>(Command.ADD,session,(TaskImpl)task);
+            sendRequest(request);
             updatedTaskList = (TaskList) in.readObject();
             notifyObservers();
-        } catch (IOException |ClassNotFoundException e) {
+        } catch (IOException e) {
+            log.error("Unable to add task.", e);
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } finally {
             closeConnection();
@@ -118,14 +132,13 @@ public class Client implements Observable {
 
     public void deleteTask(int index) {
         try {
-            openConnection();
-            sendCommandToServer(Command.REMOVE);
-            sendObjectToServer(session);
-            sendObjectToServer(index);
+            openConnection(1111);
+            Request<RemoveTaskNumber> request = new XMLRequest<>(Command.REMOVE,session,new RemoveTaskNumber(index));
+            sendRequest(request);
             updatedTaskList = (TaskList) in.readObject();
             notifyObservers();
         } catch (IOException |ClassNotFoundException e) {
-            e.printStackTrace();
+            log.error("Unable to delete task.", e);
         } finally {
             closeConnection();
         }
@@ -148,4 +161,14 @@ public class Client implements Observable {
         }
     }
 
+    public void shutDownServer() {
+        try {
+            openConnection(1111);
+            sendCommandToServer(Command.SHUTDOWN);
+        } catch (IOException e) {
+            log.error("Unable to shutdown server",e);
+        } finally {
+            closeConnection();
+        }
+    }
 }

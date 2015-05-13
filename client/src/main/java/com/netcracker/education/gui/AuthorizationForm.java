@@ -2,6 +2,7 @@ package com.netcracker.education.gui;
 
 import com.netcracker.education.Client;
 import com.netcracker.education.cache.entities.AuthenticationData;
+import org.apache.log4j.Logger;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,6 +14,7 @@ import java.io.IOException;
  * Created by Mill on 19.03.2015.
  */
 public class AuthorizationForm extends JFrame {
+    private static Logger log = Logger.getLogger(AuthorizationForm.class.getName());
     Client client;
 
     public AuthorizationForm(Client client) {
@@ -21,6 +23,7 @@ public class AuthorizationForm extends JFrame {
     }
 
     private void initComponents() {
+        log.debug("Application started");
         setTitle("Authorization");
         setPreferredSize(new Dimension(250, 150));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -50,7 +53,8 @@ public class AuthorizationForm extends JFrame {
                     AuthenticationData authData = new AuthenticationData(textField.getText(), passwordTextField.getText());
                     session = client.autorizeUser(authData);
                     MainForm mainForm = new MainForm(client);
-                    mainForm.updateTaskList(client.loadTaskList(session));
+                    mainForm.update(client.loadTaskList(session));
+                    log.debug("Client signing to server");
                     setVisible(false);
                 } catch (IOException e1) {
                     e1.printStackTrace();

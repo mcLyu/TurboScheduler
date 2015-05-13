@@ -2,29 +2,38 @@ package com.netcracker.education.beans;
 
 import com.netcracker.education.cache.entities.TaskList;
 import com.netcracker.education.cache.interfaces.Observer;
+import com.netcracker.education.cache.interfaces.Task;
 
 /**
- * Created by Lyu on 12.11.2014.
+ * Created by Mill on 4/12/2015.
  */
-public class AlerterService extends Thread implements Observer {
-    NextGenAlerter alerter;
+public class AlerterService implements Observer {
+    private TaskList taskList;
     Thread alerterThread;
-    private TaskService taskService;
+    NextGenAlerter alerter;
 
     public AlerterService(TaskService taskService) {
-        this.taskService = taskService;
+        taskService.registerObserver(this);
+        taskList = taskService.getTaskList();
+    }
+
+
+    private void updateUserTasks(TaskList newTaskList) {
+        Task nextTask = newTaskList.getNextTask();
+        if (nextTask != null) {
+            taskList = newTaskList;
+            if (alerter != null)
+                alerter.interrupt();
+
+            alerter = new NextGenAlerter(taskList.getNextTask());
+            alerterThread = new Thread(alerter);
+            alerterThread.start();
+        }
+        else alerter.interrupt();
     }
 
     @Override
     public void update(Object obj) {
-        TaskList taskList = (TaskList) obj;
-        if (taskList.isEmpty()) return;
-
-        if (alerterThread != null)
-            alerterThread.stop();
-
-        alerter = new NextGenAlerter(taskList.getNextTask(), taskService);
-        alerterThread = new Thread(alerter);
-        alerterThread.start();
+        updateUserTasks((TaskList) obj);
     }
 }

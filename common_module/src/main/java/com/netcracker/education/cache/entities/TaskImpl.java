@@ -1,61 +1,47 @@
 package com.netcracker.education.cache.entities;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import com.netcracker.education.cache.interfaces.Task;
 
-public class TaskImpl implements Task {
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
+
+@XmlType( propOrder = { "name", "description", "alertTime", "status" , "owner"} )
+@XmlRootElement( name = "Task" )
+public class TaskImpl extends ServerCommandParameter implements Task {
     /**
      *
      */
     private static final long serialVersionUID = 1L;
-    private int id;
     private String name;
     private String description;
     private Date alertTime;
-    private List<Contact> contacts;
     private Status status;
-    private String ownerLogin;
-
-    public TaskImpl(String name, String description, Date alertTime,
-                    List<Contact> contacts, Status status) {
-        id++;
-        this.name = name;
-        this.description = description;
-        this.alertTime = alertTime;
-        this.contacts = contacts;
-        this.status = status;
-    }
-
-    public TaskImpl(String name, String description, Date alertTime,
-                    List<Contact> contacts) {
-        this(name, description, alertTime, contacts, Status.NOT_PERFORMED);
-    }
+    private String owner;
+    public TaskImpl() {}
 
     public TaskImpl(String name, String description, Date alertTime) {
-        this(name, description, alertTime, new ArrayList<Contact>());
+        this.name = name;
+        this.description = description;
+        setAlertTime(alertTime);
     }
 
-
-    public void addContact(Contact contact) {
-        contacts.add(contact);
+    public TaskImpl(String name, String description, Date alertTime,String owner) {
+        this(name, description, alertTime);
+        this.owner = owner;
     }
 
     //Getters and Setters
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
 
     public String getName() {
         return name;
     }
-
+    @XmlElement(name = "name")
     public void setName(String name) {
         this.name = name;
     }
@@ -63,7 +49,7 @@ public class TaskImpl implements Task {
     public String getDescription() {
         return description;
     }
-
+    @XmlElement(name = "description")
     public void setDescription(String description) {
         this.description = description;
     }
@@ -72,34 +58,38 @@ public class TaskImpl implements Task {
         return alertTime;
     }
 
-    public void setAlertTime(Date alertTime) {
+    @XmlElement(name = "alertTime")
+    public void setAlertTime(Date alertTime)  {
         this.alertTime = alertTime;
-    }
-
-    public List<Contact> getContacts() {
-        return contacts;
-    }
-
-    public void setContacts(List<Contact> contacts) {
-        this.contacts = contacts;
     }
 
     public Status getStatus() {
         return status;
     }
-
+    @XmlElement(name = "status")
     public void setStatus(Status status) {
         this.status = status;
     }
 
-    @Override
     public String getOwner() {
-        return ownerLogin;
+        return owner;
+    }
+    @XmlElement(name = "owner")
+    public void setOwner(String ownerLogin) {
+        this.owner = ownerLogin;
     }
 
-    @Override
-    public void setUserLogin(String ownerLogin) {
-        this.ownerLogin = ownerLogin;
-    }
 
+    public void updateToCurrentTimeZone(){
+        if (alertTime != null){
+            DateFormat myFormat = new SimpleDateFormat("dd MMM yyyy HH:mm:ss z");
+            myFormat.setTimeZone(TimeZone.getDefault());
+            String parsedFormat = myFormat.format(alertTime);
+            try {
+                this.alertTime = myFormat.parse(parsedFormat);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

@@ -1,16 +1,22 @@
 package com.netcracker.education.cache.entities;
 
+import javax.xml.bind.annotation.*;
 import java.io.Serializable;
 
 /**
  * Created by Mill on 26.03.2015.
  */
-public class AuthenticationData implements Serializable{
+@XmlAccessorType(XmlAccessType.NONE)
+@XmlType( propOrder = { "login", "password" } )
+@XmlRootElement( name = "authenticationData" )
+public class AuthenticationData extends ServerCommandParameter implements Serializable{
+    @XmlElement(name = "login")
     private String login;
+    @XmlElement(name = "password")
     private String password;
     private String salt;
     private String hashSaltPassword;
-
+    public AuthenticationData(){}
     public AuthenticationData(String login, String password) {
         this.login = login;
         this.password = password;
@@ -29,7 +35,6 @@ public class AuthenticationData implements Serializable{
     public String getLogin() {
         return login;
     }
-
 
     public String getSalt() {
         return salt;
